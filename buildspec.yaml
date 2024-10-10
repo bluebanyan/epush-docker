@@ -1,0 +1,24 @@
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin "${CBARG_IMAGE_REPO}"
+      - export DOCKER_TAG_VERSION=$(git tag --contains | head -1)
+
+  build:
+    on-failure: ABORT
+    commands:
+      - docker build -t $CBARG_IMAGE_REPO:latest .
+
+  post_build:
+    commands:
+      - '[[ "$DOCKER_TAG_VERSION" != "" ]] && docker tag ${CBARG_IMAGE_REPO}:latest ${CBARG_IMAGE_REPO}:${DOCKER_TAG_VERSION} || true'
+      - '[[ "$DOCKER_TAG_VERSION" != "" ]] && docker push ${CBARG_IMAGE_REPO}:${DOCKER_TAG_VERSION} || true'
+
+env:
+  exported-variables:
+    - CODEBUILD_BUILD_NUMBER
+
+artifacts:
+  files: '**/*'
